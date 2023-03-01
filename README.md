@@ -5,7 +5,7 @@ A Python script for building and uploading package wheels to PyPI using the Acti
 Clone this repository to your local machine
 
 ```
-$ git clone https://github.com/your-username/your-repo-name.git
+$ git clone https://github.com/ActiveState/buildwheels.git
 ```
 
 ## Install the required packages using the state tool
