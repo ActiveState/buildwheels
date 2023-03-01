@@ -8,10 +8,33 @@ Clone this repository to your local machine
 $ git clone https://github.com/your-username/your-repo-name.git
 ```
 
-## Install the required packages using pip
+## Install the required packages using the state tool
+
+If you don't have the state tool installed, you can install it for free from ActiveState. The state tool is a universal package manager that enables you to easily manage and maintain your runtime environments.
+
+### Windows
+
+Download and run the [state tool installer](https://state-tool.s3.amazonaws.com/remote-installer/windows-amd64/state-remote-installer.exe).
+
+### Linux and macOS
+
+Open your command prompt and execute the following command:
+
 ```
-$ pip install -r requirements.txt
+sh <(curl -q https://platform.activestate.com/dl/cli/install.sh)`
 ```
+
+Once installed it is recommended that you close your command prompt and start a new one to ensure your environment is properly updated.
+
+### Activating the runtime environment
+
+The simplest way to download, install and utilize the fully prepared runtime environment is to simply run the following command in your terminal:
+
+```
+$ state activate
+```
+
+This will download, install and put you into a virtual shell using a runtime environment tailored to this application.
 
 ## Usage
 The script takes in the following arguments:
