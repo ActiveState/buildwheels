@@ -1,3 +1,12 @@
+## buildwheel.py
+## A Python script for building and uploading package wheels to PyPI using the ActiveState platform.
+## Copyright (C) 2023 ActiveState Software
+## Licensed under the MIT License. See the LICENSE file for more details.
+##
+## Warning: This script is intended as a demonstration only. It utilizes API calls and other functionality
+## that is unstable and in development. Things could change in the future so you probably shouldn't rely
+## on any particular API call.
+
 import subprocess
 import time
 import json
@@ -6,9 +15,13 @@ import yaml
 import os
 import click
 import re
+import platform
 
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Constants
 yamlfile = "activestate.yaml"
@@ -41,11 +54,20 @@ def append_version_number(s):
     parts[1] = version_number + '-4'
     return '-'.join(parts)
 
-def GenerateWheel(project, rootname, platforms,lang,id,pkg):
+def GenerateWheel(project, rootname, platforms,lang,id,pkg,publish):
     print("Creating Project Folder...")
     if not os.path.exists(project):
         print(f"Creating folder {project}.")
         os.makedirs(project)
+
+    os.chdir(project)
+    env_file = os.getenv('GITHUB_ENV')
+
+    # If we're in github actions set this env var for future steps
+    if os.path.exists(env_file):
+        print(f"Adding PROJECT_DIR={project} to GITHUB_ENV.")
+        with open(env_file, "a") as myfile:
+            myfile.write(f"PROJECT_DIR={project}")
 
     print("Clearing out any existing config files...")
 
@@ -53,26 +75,28 @@ def GenerateWheel(project, rootname, platforms,lang,id,pkg):
         os.remove(os.path.join(project,yamlfile))
 
     print("Creating Project...")
-    stdout = subprocess.run(['state', 'init', id, lang, "-n"], check=True, capture_output=True, text=True).stdout
+    stdout = subprocess.run(['state', 'init', id, lang], check=True, capture_output=True, text=True).stdout
 
     print("Pushing Project to Platform...")
-
     stdout = subprocess.run(['state', 'push', "-n"], check=True, capture_output=True, text=True).stdout
 
     for p in platforms:
-        print(f"Adding {p}...")
-        stdout = subprocess.run(['state', 'platforms', 'add', platforms_codes[p.lower()], "-n"], check=True, capture_output=True, text=True).stdout
+        print("Platform: ",platform.system())
+        if ((platform.system() == "Windows" and p.startswith("win")) or
+            (platform.system() == "Linux" and p.startswith("lin")) or
+            ( platform.system() == "Darwin" and p.startswith("mac"))):
+            print(f"Skipping {p}.")
+        else:
+            print(f"Adding {p}...")
+            stdout = subprocess.run(['state', 'platforms', 'add', platforms_codes[p.lower()], "-n"], check=True, capture_output=True, text=True).stdout
 
     print("Syncing changes with platform...")
-
     stdout = subprocess.run(['state', 'pull', "-n"], check=True, capture_output=True, text=True).stdout
 
     print("Adding Package to Project...")
-
     stdout = subprocess.run(['state', 'install', pkg, "-n"], check=True, capture_output=True, text=True).stdout
 
     print("Pushing Project to Platform...")
-
     stdout = subprocess.run(['state', 'push', "-n"], check=True, capture_output=True, text=True).stdout
 
     commit_id = ""
@@ -87,13 +111,11 @@ def GenerateWheel(project, rootname, platforms,lang,id,pkg):
             print(exc)
 
     print("Exporting Recipe...")
-
     stdout = subprocess.run(['state', 'export', 'recipe', "-n"], check=True, capture_output=True, text=True).stdout
 
     recipe = json.loads(stdout)
 
     print("Generating Wheels...")
-
     r = requests.post(build_url, json={"recipe_id": recipe['recipe_id']})
 
     jsr = r.json()
@@ -133,13 +155,19 @@ def GenerateWheel(project, rootname, platforms,lang,id,pkg):
             }}
     """
 
-    print("Gathering Artifacts...")
-
     # TODO: Add auth to cover private projects? 
     variables = {'commit': commit_id}
-    r = requests.post(gql_url, json={'query': query , 'variables': variables})
 
-    builds = r.json()
+    ## Sometimes this needs to retry
+    retry = 3
+    while(retry > 0):
+        print("Gathering Artifacts...")
+        r = requests.post(gql_url, json={'query': query , 'variables': variables})
+        builds = r.json()
+        if "artifacts" in builds['data']['builds']['builds']:
+            retry = 0
+        else:
+            retry = retry - 1
 
     print("Downloading Artifacts...")
 
@@ -154,15 +182,15 @@ def GenerateWheel(project, rootname, platforms,lang,id,pkg):
                 url = a['uri']
                 fname = url[url.rfind('/')+1:]
                 if rootname in fname:
-                    print(fname)
                     r = requests.get(a['uri'], stream=True)
                     with open(os.path.join("dist",append_version_number(fname)),'wb') as f:
                         for chunk in r.iter_content(chunk_size=1024): 
                             if chunk:
                                 f.write(chunk)
 
-    print("Uploading wheel(s) to PyPI...")
-    stdout = subprocess.run(["twine", "upload", "-r","testpypi","dist/*","-u",f"{pypi_user}","-p",f"{pypi_pass}","--non-interactive"], check=True, capture_output=True, text=True).stdout
+    if publish:
+        print("Uploading wheel(s) to PyPI...")
+        stdout = subprocess.run(["twine", "upload", "-r","testpypi","dist/*","-u",f"{pypi_user}","-p",f"{pypi_pass}","--non-interactive"], check=True, capture_output=True, text=True).stdout
 
     os.chdir("..")
 
@@ -174,7 +202,8 @@ def GenerateWheel(project, rootname, platforms,lang,id,pkg):
 @click.argument("package_name", type=str, required=True)
 @click.argument("version", type=str, required=True)
 @click.argument("platforms", type=str, required=True)
-def main(org_name, project_name, package_name, version, platforms):
+@click.option('--publish', is_flag=True, show_default=True, default=False, help='Publish to PyPI')
+def main(org_name, project_name, package_name, version, platforms, publish):
     platforms = parse_platforms(platforms)
     validate_version(version)
 
@@ -187,7 +216,7 @@ def main(org_name, project_name, package_name, version, platforms):
 
     rootname = package_name.replace("-","_")
 
-    GenerateWheel(project_name+ts,rootname,platforms,lang,id,pkg)
+    GenerateWheel(project_name+ts,rootname,platforms,lang,id,pkg,publish)
 
 if __name__ == "__main__":
     main()

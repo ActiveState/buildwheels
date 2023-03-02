@@ -1,0 +1,65 @@
+name: Build Wheel
+# Setting up Cache directory and ActiveState Platform API key
+env:
+  ACTIVESTATE_CLI_CACHEDIR: ${{ github.workspace }}/.cache        
+  ACTIVESTATE_API_KEY: ${{ secrets.ACTIVESTATE_API_KEY }}
+on:
+  push:
+    branches:
+      - main
+  
+  workflow_dispatch:
+    inputs:
+      activestate_org:
+        description: "Name of org to store the project in"
+        type: "string"
+      activestate_project:
+        description: "Name of the project to create"
+        type: "string"
+      package_name:
+        description: "Name of package to build a wheel for"
+        type: "string"
+      version:
+        description: "Version of package to build a wheel for"
+        type: "string"
+      platforms:
+        description: "Platforms to build the wheel for (win/lin/mac)"
+        type: "string"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      # Installing State Tool on Linux with default shell behavior
+      - name: Install State Tool (Linux)            
+        if: matrix.os != 'windows-latest'      
+        run: sh <(curl -q https://platform.activestate.com/dl/cli/_ghacipypi/install.sh) -n --path /opt/ActiveState
+      - name: Add State Tool to PATH
+        run: echo "/opt/ActiveState/bin" >> $GITHUB_PATH
+      - name: Opt into unstable commands
+        run: state config set optin.unstable true
+      # Checking ActiveState Platform for project updates
+      - name: Update project
+        run: state exec exit 0
+      - name: Create build folder
+        run: |
+              mkdir build
+              cd build
+      - name: Build wheel
+        env:
+          PYPI_USER: ${{ secrets.PYPI_USER }}
+          PYPI_PASS: ${{ secrets.PYPI_PASS }}
+          org_name: ${{ inputs.activestate_org }}
+          project_name: ${{ inputs.activestate_project }}
+          package_name: ${{ inputs.package_name }}
+          version: ${{ inputs.version }}
+          platforms: ${{ inputs.platforms }}
+        run: python3 ${{ github.workspace }}/buildwheel.py ${{ env.org_name }} ${{ env.project_name }} ${{ env.package_name }} ${{ env.version }} ${{ env.platforms }}
+        working-directory: ${{ github.workspace }}/build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheel-files
+          path: |
+            ${{ github.workspace }}/build/${{ env.PROJECT_DIR }}/dist/*.whl
