@@ -45,12 +45,12 @@ This will download, install and put you into a virtual shell using a runtime env
 ## Usage
 The script takes in the following arguments:
 
-`org_name`: The name of the organization on ActiveState.
-`project_name`: The name of the project on ActiveState.
-`package_name`: The name of the package to build and upload.
-`version`: The version of the package to build and upload.
-`platforms`: The platforms on which to build the package. Valid platforms are `windows`, `linux`, and `mac`. Short forms `win`, `lin`, and `mac` are also supported.
-`--publish`: Automatically publish the wheel to PyPI. Requires PYPI_USER and PYPI_PASS to be set. Defaults to `false`.
+`org_name`: The name of the organization on ActiveState.  
+`project_name`: The name of the project on ActiveState.  
+`package_name`: The name of the package to build and upload.  
+`version`: The version of the package to build and upload.  
+`platforms`: The platforms on which to build the package. Valid platforms are `windows`, `linux`, and `mac`. Short forms `win`, `lin`, and `mac` are also supported.  
+`--publish`: Automatically publish the wheel to PyPI. Requires PYPI_USER and PYPI_PASS to be set. Defaults to `false`.  
 
 ```
 $ export PYPI_USER=<your-username>
