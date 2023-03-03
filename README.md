@@ -1,6 +1,12 @@
 # buildwheel.py
 A Python script for building and uploading package wheels to PyPI using the ActiveState platform.
 
+```
+## Warning: This script is intended as a demonstration only. It utilizes API calls and other functionality
+## that is unstable and in development. Things could change in the future so you probably shouldn't rely
+## on any particular API call.
+```
+
 ## Installation
 Clone this repository to your local machine
 
