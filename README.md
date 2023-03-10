@@ -105,3 +105,9 @@ Alternatively, you can also use another action like [https://github.com/pypa/gh-
 
 ## License
 This script is licensed under the MIT License. See the LICENSE file for more details.
+
+## Need help?
+If you have questions about this, head over to the [ActiveState Community](https://community.activestate.com) where you can get help.
+
+## Legal
+Use of this script and/or action requires an ActiveState Platform account. You can [sign-up for free](https://platform.activestate.com). The complete ActiveState Platform Terms of Service are available [here](https://www.activestate.com/support/eulas/). As this is free software and open-source, refunds do not apply.
